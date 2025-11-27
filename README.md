@@ -1,4 +1,4 @@
-# 🎓 AI Smart Attendance & Course Management System
+# [🎓 AI Smart Attendance & Course Management System](https://github.com/SamiAwawda/Face-Attendance-System)
 ### *Cyberpunk Edition*
 
 [![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -82,8 +82,8 @@ A cutting-edge **Real-Time Face Recognition Attendance System** designed to elim
 
 ### Step 1: Clone Repository
 ```bash
-git clone https://github.com/yourusername/ai-attendance-system.git
-cd ai-attendance-system
+git clone https://github.com/SamiAwawda/Face-Attendance-System.git
+cd Face-Attendance-System
 ```
 
 ### Step 2: Create Virtual Environment
@@ -153,19 +153,19 @@ The server will start at `http://localhost:5000`
 ## 📸 Screenshots
 
 ### Gateway Page
-![Gateway Screenshot](./screenshots/gateway.png)
+<!-- ![Gateway Screenshot](./screenshots/gateway.png) -->
 *Dual-portal entry point with cyberpunk theme*
 
 ### Admin Dashboard
-![Admin Dashboard](./screenshots/admin_dashboard.png)
+<!-- ![Admin Dashboard](./screenshots/admin_dashboard.png) -->
 *Student and course management with tabbed interface*
 
 ### Course Analytics
-![Course Stats](./screenshots/course_stats.png)
+<!-- ![Course Stats](./screenshots/course_stats.png) -->
 *Professor dashboard showing week-by-week attendance history*
 
 ### Live Attendance
-![Attendance Page](./screenshots/attendance.png)
+<!-- ![Attendance Page](./screenshots/attendance.png) -->
 *Real-time face recognition with color-coded detection*
 
 ---
@@ -299,10 +299,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
-- Email: your.email@example.com
+**Sami Awawda**
+- GitHub: [@SamiAwawda](https://github.com/SamiAwawda)
 
 ---
 
@@ -318,9 +316,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📈 Project Stats
 
-![GitHub repo size](https://img.shields.io/github/repo-size/yourusername/ai-attendance-system)
-![GitHub stars](https://img.shields.io/github/stars/yourusername/ai-attendance-system?style=social)
-![GitHub forks](https://img.shields.io/github/forks/yourusername/ai-attendance-system?style=social)
+![GitHub repo size](https://img.shields.io/github/repo-size/SamiAwawda/Face-Attendance-System)
+![GitHub stars](https://img.shields.io/github/stars/SamiAwawda/Face-Attendance-System?style=social)
+![GitHub forks](https://img.shields.io/github/forks/SamiAwawda/Face-Attendance-System?style=social)
 
 ---
 
@@ -328,6 +326,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### ⭐ Star this repo if you found it helpful!
 
-**Built with 💙 using AI & Modern Web Technologies**
+**Developed with 💙 by Sami Awawda | Powered by MediaPipe & DeepFace**
 
 </div>
