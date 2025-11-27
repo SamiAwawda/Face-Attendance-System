@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row min-vh-100 py-5">
+        <div class="col-12">
+            <!-- Session Info Header -->
+            <div class="text-center mb-5">
+                <h1 class="neon-text mb-3">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Control Panel
+                </h1>
+                <div class="cyber-card d-inline-block">
+                    <p class="mb-1">
+                        <i class="fas fa-user-tie text-cyan"></i>
+                        <strong>Doctor:</strong> {{ doctor_name }}
+                    </p>
+                    <p class="mb-1">
+                        <i class="fas fa-book text-cyan"></i>
+                        <strong>Course:</strong> {{ course_name }}
+                    </p>
+                    <p class="mb-0">
+                        <i class="fas fa-code text-cyan"></i>
+                        <strong>Code:</strong> {{ course_code }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Cards -->
+            <div class="row g-4 justify-content-center mb-5">
+                <div class="col-md-5">
+                    <a href="/register" class="text-decoration-none">
+                        <div class="action-card">
+                            <i class="fas fa-user-plus"></i>
+                            <h3>Register New Student</h3>
+                            <p class="text-muted mb-0">
+                                Capture and encode student faces
+                            </p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-5">
+                    <a href="/attendance" class="text-decoration-none">
+                        <div class="action-card">
+                            <i class="fas fa-clipboard-check"></i>
+                            <h3>Start Attendance</h3>
+                            <p class="text-muted mb-0">
+                                Real-time face recognition tracking
+                            </p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- End Session Button -->
+            <div class="text-center">
+                <button onclick="endSession()" class="btn btn-outline-danger">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    End Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .text-cyan {
+        color: var(--neon-cyan);
+    }
+
+    .btn-outline-danger {
+        border: 2px solid #dc3545;
+        color: #dc3545;
+        padding: 10px 25px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-danger:hover {
+        background: #dc3545;
+        color: #fff;
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function endSession() {
+        Swal.fire({
+            title: 'End Session?',
+            text: "This will clear all session data",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, end it',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '/end_session';
+            }
+        });
+    }
+</script>
+{% endblock %}

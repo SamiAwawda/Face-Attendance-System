@@ -1,0 +1,275 @@
+{% extends "layout.html" %}
+
+{% block title %}Attendance - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="text-center mb-4">
+        <h1 class="neon-text">
+            <i class="fas fa-clipboard-check"></i>
+            Real-Time Attendance
+        </h1>
+        <p class="text-muted">Automatic face recognition and tracking</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="/dashboard" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button onclick="markAttendance()" class="btn btn-sm btn-cyber">
+                <i class="fas fa-save"></i> Mark All Attendance
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left: Camera Feed -->
+        <div class="col-lg-7">
+            <div class="cyber-card">
+                <h4 class="text-center mb-3" style="color: var(--neon-cyan);">
+                    <i class="fas fa-video"></i> Live Recognition Feed
+                </h4>
+                <div class="video-container">
+                    <img src="{{ url_for('video_feed') }}" alt="Camera Feed" id="videoFeed">
+                </div>
+                <div class="mt-3 row text-center">
+                    <div class="col-6">
+                        <div class="p-2" style="background: rgba(0, 255, 255, 0.1); border-radius: 8px;">
+                            <h5 class="mb-0" style="color: var(--neon-cyan);" id="recognizedCount">0</h5>
+                            <small class="text-muted">Recognized</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2" style="background: rgba(0, 255, 0, 0.1); border-radius: 8px;">
+                            <h5 class="mb-0" style="color: var(--neon-green);" id="markedCount">0</h5>
+                            <small class="text-muted">Marked</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Live Attendance Log -->
+        <div class="col-lg-5">
+            <div class="cyber-card">
+                <h4 class="text-center mb-3" style="color: var(--neon-cyan);">
+                    <i class="fas fa-list"></i> Live Attendance Log
+                </h4>
+
+                <div class="attendance-log" id="attendanceLog">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-user-clock fa-3x mb-3" style="opacity: 0.3;"></i>
+                        <p>Waiting for students...</p>
+                        <small>Recognized faces will appear here</small>
+                    </div>
+                </div>
+
+                <div class="mt-3 text-center">
+                    <button onclick="refreshLog()" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-sync-alt"></i> Refresh Log
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-outline-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.7);
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--neon-cyan);
+        color: var(--neon-cyan);
+    }
+
+    .btn-sm.btn-cyber {
+        padding: 8px 20px;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let pollingInterval = null;
+    let lastRecognizedCount = 0;
+
+    // Start polling for recognized students
+    function startPolling() {
+        pollingInterval = setInterval(async () => {
+            await updateAttendanceLog();
+            await updateStats();
+        }, 2000); // Poll every 2 seconds
+    }
+
+    // Stop polling
+    function stopPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+    }
+
+    // Update attendance log
+    async function updateAttendanceLog() {
+        try {
+            const response = await fetch('/api/get_recognized_students');
+            const data = await response.json();
+
+            const log = document.getElementById('attendanceLog');
+
+            if (data.students && data.students.length > 0) {
+                // Clear empty state
+                log.innerHTML = '';
+
+                // Add each student to log (newest first)
+                data.students.forEach(student => {
+                    // Check if already in log
+                    if (!document.getElementById(`log-${student.student_id}`)) {
+                        const logItem = document.createElement('div');
+                        logItem.className = 'log-item';
+                        logItem.id = `log-${student.student_id}`;
+                        logItem.innerHTML = `
+                        <div class="time">
+                            <i class="fas fa-clock"></i> ${student.timestamp}
+                        </div>
+                        <div class="name">
+                            <i class="fas fa-user"></i> ${student.name}
+                        </div>
+                        <div class="id">
+                            <i class="fas fa-id-badge"></i> ID: ${student.student_id}
+                        </div>
+                    `;
+
+                        // Add to top of log
+                        log.insertBefore(logItem, log.firstChild);
+
+                        // Animate entry
+                        logItem.style.opacity = '0';
+                        logItem.style.transform = 'translateX(-20px)';
+                        setTimeout(() => {
+                            logItem.style.transition = 'all 0.3s ease';
+                            logItem.style.opacity = '1';
+                            logItem.style.transform = 'translateX(0)';
+                        }, 10);
+                    }
+                });
+
+                // Play sound if new student recognized
+                if (data.students.length > lastRecognizedCount) {
+                    playNotificationSound();
+                }
+                lastRecognizedCount = data.students.length;
+            }
+        } catch (error) {
+            console.error('Failed to update attendance log:', error);
+        }
+    }
+
+    // Update statistics
+    async function updateStats() {
+        try {
+            const response = await fetch('/api/session_stats');
+            const data = await response.json();
+
+            document.getElementById('recognizedCount').textContent = data.total_recognized;
+            document.getElementById('markedCount').textContent = data.total_marked;
+        } catch (error) {
+            console.error('Failed to update stats:', error);
+        }
+    }
+
+    // Mark attendance for all recognized students
+    async function markAttendance() {
+        Swal.fire({
+            title: 'Marking Attendance...',
+            html: 'Please wait',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await fetch('/api/mark_attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Attendance Marked!',
+                    html: `
+                    <p>Successfully marked ${data.marked_count} student(s)</p>
+                    ${data.students.map(s => `<p class="mb-0 text-muted small">${s.name}</p>`).join('')}
+                `,
+                    timer: 3000
+                });
+
+                // Update stats
+                await updateStats();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to mark attendance'
+            });
+        }
+    }
+
+    // Refresh log manually
+    async function refreshLog() {
+        await updateAttendanceLog();
+        await updateStats();
+    }
+
+    // Play subtle notification sound (using Audio API)
+    function playNotificationSound() {
+        // Create a subtle beep using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+    }
+
+    // Start polling when page loads
+    window.addEventListener('load', () => {
+        startPolling();
+        updateAttendanceLog();
+        updateStats();
+    });
+
+    // Stop polling when page unloads
+    window.addEventListener('beforeunload', () => {
+        stopPolling();
+    });
+</script>
+{% endblock %}

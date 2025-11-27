@@ -1,0 +1,174 @@
+{% extends "layout.html" %}
+
+{% block title %}Register Student - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="text-center mb-4">
+        <h1 class="neon-text">
+            <i class="fas fa-user-plus"></i>
+            Student Registration
+        </h1>
+        <p class="text-muted">Capture face and register new student</p>
+        <a href="/dashboard" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left: Camera Feed -->
+        <div class="col-lg-6">
+            <div class="cyber-card">
+                <h4 class="text-center mb-3" style="color: var(--neon-cyan);">
+                    <i class="fas fa-camera"></i> Live Camera Feed
+                </h4>
+                <div class="video-container">
+                    <img src="{{ url_for('video_feed') }}" alt="Camera Feed" id="videoFeed">
+                </div>
+                <div class="text-center mt-3">
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Position your face in the frame for detection
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Registration Form -->
+        <div class="col-lg-6">
+            <div class="cyber-card">
+                <h4 class="text-center mb-4" style="color: var(--neon-cyan);">
+                    <i class="fas fa-id-card"></i> Student Information
+                </h4>
+
+                <form id="registrationForm">
+                    <div class="mb-3">
+                        <label for="studentName" class="form-label">
+                            <i class="fas fa-user"></i> Full Name
+                        </label>
+                        <input type="text" class="form-control" id="studentName" name="name"
+                            placeholder="Enter student name" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="studentId" class="form-label">
+                            <i class="fas fa-id-badge"></i> Student ID
+                        </label>
+                        <input type="text" class="form-control" id="studentId" name="student_id"
+                            placeholder="Enter student ID" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-cyber w-100">
+                        <i class="fas fa-camera-retro me-2"></i>
+                        Capture Face & Register
+                    </button>
+                </form>
+
+                <div class="mt-4 p-3"
+                    style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid var(--neon-cyan); border-radius: 5px;">
+                    <h6 style="color: var(--neon-cyan);">
+                        <i class="fas fa-lightbulb"></i> Instructions
+                    </h6>
+                    <ul class="mb-0 text-muted small">
+                        <li>Ensure good lighting on your face</li>
+                        <li>Look directly at the camera</li>
+                        <li>Wait for green box to appear (face detected)</li>
+                        <li>Fill in the form and click capture</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-outline-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.7);
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--neon-cyan);
+        color: var(--neon-cyan);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('registrationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const name = document.getElementById('studentName').value.trim();
+        const studentId = document.getElementById('studentId').value.trim();
+
+        if (!name || !studentId) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Missing Information',
+                text: 'Please fill in all fields'
+            });
+            return;
+        }
+
+        // Show loading
+        Swal.fire({
+            title: 'Capturing Face...',
+            html: 'Please stay still',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await fetch('/api/capture_face', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, student_id: studentId })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Registration Successful!',
+                    html: `
+                    <p>${data.message}</p>
+                    <p class="text-muted mb-0">Face encoding saved to database</p>
+                `,
+                    confirmButtonText: 'Register Another',
+                    showCancelButton: true,
+                    cancelButtonText: 'Back to Dashboard'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Clear form for next registration
+                        document.getElementById('registrationForm').reset();
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Registration Failed',
+                    text: data.message
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to register student. Please try again.'
+            });
+        }
+    });
+</script>
+{% endblock %}
