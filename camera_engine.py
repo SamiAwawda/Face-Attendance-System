@@ -140,8 +140,18 @@ class CameraEngine:
                 
                 # In attendance mode, try to recognize the face
                 if self.mode == "attendance":
-                    name_label = self._recognize_face(frame, x, y, box_w, box_h)
-                    color = (0, 255, 0) if name_label != "Unknown" else (0, 255, 255)
+                    name_label, status = self._recognize_face(frame, x, y, box_w, box_h)
+                    
+                    # Color-coded boxes based on status
+                    if status == "new":
+                        color = (0, 255, 0)  # GREEN for new students
+                        name_label = name_label
+                    elif status == "already_marked":
+                        color = (0, 215, 255)  # GOLD for already marked
+                        name_label = f"{name_label} ✓"
+                    else:
+                        color = (0, 255, 255)  # CYAN for unknown
+                        name_label = "Unknown"
                 else:
                     name_label = "Face Detected"
                     color = (0, 255, 0)
@@ -178,17 +188,17 @@ class CameraEngine:
         self.current_frame = buffer.tobytes()
         return self.current_frame
     
-    def _recognize_face(self, frame: np.ndarray, x: int, y: int, w: int, h: int) -> str:
+    def _recognize_face(self, frame: np.ndarray, x: int, y: int, w: int, h: int) -> tuple:
         """
         Recognize a face using DeepFace and Firebase embeddings
-        Returns the name if recognized, "Unknown" otherwise
+        Returns tuple: (name, status) where status is "new", "already_marked", or "unknown"
         """
         try:
             # Update cache if needed
             self._update_students_cache()
             
             if not self.students_cache:
-                return "Unknown"
+                return ("Unknown", "unknown")
             
             # Extract face region with padding
             padding = 20
@@ -201,7 +211,7 @@ class CameraEngine:
             face_img = frame[y1:y2, x1:x2]
             
             if face_img.size == 0:
-                return "Unknown"
+                return ("Unknown", "unknown")
             
             # Generate embedding using DeepFace
             embedding_objs = DeepFace.represent(
@@ -211,7 +221,7 @@ class CameraEngine:
             )
             
             if not embedding_objs:
-                return "Unknown"
+                return ("Unknown", "unknown")
             
             current_embedding = np.array(embedding_objs[0]['embedding'])
             
@@ -233,18 +243,21 @@ class CameraEngine:
                 student_id = best_match['student_id']
                 name = best_match['name']
                 
+                # Check if already marked in this session
+                status = "already_marked" if student_id in self.attendance_marked else "new"
+                
                 # Add to recognized students
                 self.recognized_students[student_id] = {
                     'name': name,
                     'timestamp': time.time()
                 }
                 
-                return name
+                return (name, status)
             
         except Exception as e:
             print(f"[Error] Recognition failed: {e}")
         
-        return "Unknown"
+        return ("Unknown", "unknown")
     
     def _cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
         """Calculate cosine similarity between two vectors"""

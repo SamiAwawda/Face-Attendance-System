@@ -1,0 +1,155 @@
+{% extends "layout.html" %}
+
+{% block title %}Setup Class - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row min-vh-100 align-items-center justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="cyber-card">
+                <div class="text-center mb-4">
+                    <h1 class="neon-text mb-3">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        Start Class Session
+                    </h1>
+                    <p class="text-muted">Configure lecture details and duration</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Gateway
+                    </a>
+                </div>
+
+                <form id="setupForm">
+                    <div class="mb-3">
+                        <label for="doctorName" class="form-label">
+                            <i class="fas fa-user-tie"></i> Doctor Name
+                        </label>
+                        <input type="text" class="form-control" id="doctorName" name="doctor_name"
+                            placeholder="Enter doctor name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="courseName" class="form-label">
+                            <i class="fas fa-book"></i> Course Name
+                        </label>
+                        <input type="text" class="form-control" id="courseName" name="course_name"
+                            placeholder="Enter course name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="courseCode" class="form-label">
+                            <i class="fas fa-code"></i> Course Code
+                        </label>
+                        <input type="text" class="form-control" id="courseCode" name="course_code"
+                            placeholder="Enter course code" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="lectureDuration" class="form-label">
+                            <i class="fas fa-clock"></i> Lecture Duration (Minutes)
+                        </label>
+                        <input type="number" class="form-control" id="lectureDuration" name="lecture_duration"
+                            placeholder="Enter duration in minutes" min="5" max="300" value="60" required>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Attendance will auto-stop when time expires (5-300 min)
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn btn-cyber w-100">
+                        <i class="fas fa-play-circle me-2"></i>
+                        Start Class & Begin Attendance
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt"></i>
+                        Session will be tracked with countdown timer
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-outline-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--neon-cyan);
+        color: var(--neon-cyan);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('setupForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const duration = parseInt(document.getElementById('lectureDuration').value);
+
+        // Validation
+        if (duration < 5 || duration > 300) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Duration',
+                text: 'Duration must be between 5-300 minutes'
+            });
+            return;
+        }
+
+        // Show loading
+        Swal.fire({
+            title: 'Starting Class Session...',
+            html: `Setting up ${duration} minute lecture`,
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await fetch('/start_session', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Session Started!',
+                    html: 'Launching attendance system...',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = data.redirect;
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to start session. Please try again.'
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,654 @@
+{% extends "layout.html" %}
+
+{% block title %}Admin Dashboard - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="neon-text mb-2">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Admin Dashboard
+                    </h1>
+                    <p class="text-muted">System Management & Statistics</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-home"></i> Gateway
+                    </a>
+                    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(45deg, #00ffff, #0099ff);">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="totalStudents">0</h3>
+                    <p>Total Students</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(45deg, #ff00ff, #ff66ff);">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="totalCourses">0</h3>
+                    <p>Total Courses</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(45deg, #00ff00, #00cc00);">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="totalSessions">0</h3>
+                    <p>Attendance Sessions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="cyber-card">
+                <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="students-tab" data-bs-toggle="tab"
+                            data-bs-target="#students" type="button">
+                            <i class="fas fa-users"></i> Manage Students
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="courses-tab" data-bs-toggle="tab" data-bs-target="#courses"
+                            type="button">
+                            <i class="fas fa-graduation-cap"></i> Manage Courses
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="adminTabsContent">
+                    <!-- Tab 1: Manage Students -->
+                    <div class="tab-pane fade show active" id="students" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 style="color: var(--neon-cyan); margin: 0;">
+                                <i class="fas fa-user-graduate"></i> Student Management
+                            </h4>
+                            <a href="{{ url_for('register') }}" class="btn btn-cyber">
+                                <i class="fas fa-user-plus me-2"></i>
+                                Add New Student
+                            </a>
+                        </div>
+
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-hashtag"></i> #</th>
+                                    <th><i class="fas fa-user"></i> Name</th>
+                                    <th><i class="fas fa-id-badge"></i> Student ID</th>
+                                    <th><i class="fas fa-calendar"></i> Registered</th>
+                                    <th><i class="fas fa-cog"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-5">
+                                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                                        <p>Loading students...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Tab 2: Manage Courses -->
+                    <div class="tab-pane fade" id="courses" role="tabpanel">
+                        <!-- Add Course Form -->
+                        <div class="mb-4 p-4"
+                            style="background: rgba(0, 0, 0, 0.3); border-radius: 15px; border: 1px solid rgba(255, 0, 255, 0.3);">
+                            <h4 style="color: #ff00ff; margin-bottom: 20px;">
+                                <i class="fas fa-plus-circle"></i> Add New Course
+                            </h4>
+                            <form id="addCourseForm" class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="courseName" class="form-label">Course Name</label>
+                                    <input type="text" class="form-control" id="courseName" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="courseCode" class="form-label">Course Code</label>
+                                    <input type="text" class="form-control" id="courseCode" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="doctorName" class="form-label">Doctor Name</label>
+                                    <input type="text" class="form-control" id="doctorName" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="coursePassword" class="form-label">Course Password</label>
+                                    <input type="text" class="form-control" id="coursePassword" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="startDate" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="startDate" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="totalLectures" class="form-label">Total Lectures</label>
+                                    <input type="number" class="form-control" id="totalLectures" min="1" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="classCapacity" class="form-label">Total Enrolled Students</label>
+                                    <input type="number" class="form-control" id="classCapacity" min="1" required>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-cyber">
+                                        <i class="fas fa-save me-2"></i> Create Course
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Courses Table -->
+                        <h4 style="color: #ff00ff; margin-bottom: 15px;">
+                            <i class="fas fa-list"></i> Existing Courses
+                        </h4>
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-code"></i> Code</th>
+                                    <th><i class="fas fa-book"></i> Course Name</th>
+                                    <th><i class="fas fa-user-tie"></i> Doctor</th>
+                                    <th><i class="fas fa-list-ol"></i> Total Lectures</th>
+                                    <th><i class="fas fa-cog"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="courseTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-5">
+                                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                                        <p>Loading courses...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-outline-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--neon-cyan);
+        color: var(--neon-cyan);
+    }
+
+    .btn-outline-danger {
+        border: 1px solid #dc3545;
+        color: #dc3545;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-danger:hover {
+        background: #dc3545;
+        color: #fff;
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+    }
+
+    .stat-card {
+        background: rgba(26, 26, 46, 0.8);
+        border: 1px solid rgba(0, 255, 255, 0.3);
+        border-radius: 15px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+    }
+
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #000;
+    }
+
+    .stat-content h3 {
+        font-size: 2.5rem;
+        margin: 0;
+        color: var(--neon-cyan);
+        font-family: 'Orbitron', sans-serif;
+    }
+
+    .stat-content p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+    }
+
+    .nav-tabs {
+        border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+    }
+
+    .nav-tabs .nav-link {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        padding: 12px 25px;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+        color: var(--neon-cyan);
+        border-bottom-color: rgba(0, 255, 255, 0.5);
+    }
+
+    .nav-tabs .nav-link.active {
+        background: rgba(0, 255, 255, 0.1);
+        color: var(--neon-cyan);
+        border-bottom-color: var(--neon-cyan);
+    }
+
+    .table {
+        margin: 0;
+    }
+
+    .table thead th {
+        background: rgba(0, 0, 0, 0.3);
+        border-color: rgba(0, 255, 255, 0.2);
+        color: var(--neon-cyan);
+        font-weight: 600;
+        padding: 1rem;
+    }
+
+    .table tbody td {
+        border-color: rgba(0, 255, 255, 0.1);
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background: rgba(0, 255, 255, 0.05);
+    }
+
+    .btn-delete {
+        background: linear-gradient(45deg, #dc3545, #c82333);
+        border: none;
+        color: #fff;
+        padding: 8px 16px;
+        border-radius: 5px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let studentsData = [];
+    let coursesData = [];
+
+    // Load data on page load
+    window.addEventListener('load', async () => {
+        await loadStudents();
+        await loadCourses();
+        await loadSessionCount();
+    });
+
+    // ==================== STUDENTS TAB ====================
+
+    async function loadStudents() {
+        try {
+            const response = await fetch('/api/get_all_students');
+            const data = await response.json();
+
+            if (data.success) {
+                studentsData = data.students;
+                document.getElementById('totalStudents').textContent = data.total;
+                renderStudentTable();
+            } else {
+                showError('Failed to load students');
+            }
+        } catch (error) {
+            console.error('Error loading students:', error);
+            showError('Failed to load students');
+        }
+    }
+
+    function renderStudentTable() {
+        const tbody = document.getElementById('studentTableBody');
+
+        if (studentsData.length === 0) {
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted py-5">
+                    <i class="fas fa-users fa-2x mb-3" style="opacity: 0.3;"></i>
+                    <p>No students registered yet</p>
+                    <small>Click "Add New Student" to register</small>
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        tbody.innerHTML = studentsData.map((student, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td><strong>${student.name}</strong></td>
+            <td><code>${student.student_id}</code></td>
+            <td>
+                <small class="text-muted">
+                    ${student.registered_at ? formatDate(student.registered_at) : 'N/A'}
+                </small>
+            </td>
+            <td>
+                <button onclick="deleteStudent('${student.student_id}', '${student.name}')" class="btn-delete">
+                    <i class="fas fa-trash-alt me-1"></i> Delete
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    }
+
+    async function deleteStudent(studentId, studentName) {
+        const result = await Swal.fire({
+            title: 'Delete Student?',
+            html: `
+            <p>Are you sure you want to delete:</p>
+            <p><strong>${studentName}</strong> (ID: ${studentId})?</p>
+            <p class="text-danger small">This action cannot be undone!</p>
+        `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#dc3545'
+        });
+
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Deleting...',
+                html: 'Please wait',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            try {
+                const response = await fetch(`/api/delete_student/${studentId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: data.message,
+                        timer: 2000
+                    });
+
+                    await loadStudents();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to delete student'
+                });
+            }
+        }
+    }
+
+    // ==================== COURSES TAB ====================
+
+    async function loadCourses() {
+        try {
+            const response = await fetch('/api/get_all_courses');
+            const data = await response.json();
+
+            if (data.success) {
+                coursesData = data.courses;
+                document.getElementById('totalCourses').textContent = data.total;
+                renderCourseTable();
+            } else {
+                showError('Failed to load courses');
+            }
+        } catch (error) {
+            console.error('Error loading courses:', error);
+            showError('Failed to load courses');
+        }
+    }
+
+    function renderCourseTable() {
+        const tbody = document.getElementById('courseTableBody');
+
+        if (coursesData.length === 0) {
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted py-5">
+                    <i class="fas fa-graduation-cap fa-2x mb-3" style="opacity: 0.3;"></i>
+                    <p>No courses created yet</p>
+                    <small>Use the form above to add a course</small>
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        tbody.innerHTML = coursesData.map(course => `
+        <tr>
+            <td><code>${course.course_code}</code></td>
+            <td><strong>${course.course_name}</strong></td>
+            <td>${course.doctor_name}</td>
+            <td>${course.total_lectures}</td>
+            <td>
+                <button onclick="deleteCourse('${course.course_code}', '${course.course_name}')" class="btn-delete">
+                    <i class="fas fa-trash-alt me-1"></i> Delete
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    }
+
+    // Add Course Form Handler
+    document.getElementById('addCourseForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const courseData = {
+            course_name: document.getElementById('courseName').value.trim(),
+            course_code: document.getElementById('courseCode').value.trim(),
+            doctor_name: document.getElementById('doctorName').value.trim(),
+            password: document.getElementById('coursePassword').value.trim(),
+            start_date: document.getElementById('startDate').value,
+            total_lectures: parseInt(document.getElementById('totalLectures').value),
+            class_capacity: parseInt(document.getElementById('classCapacity').value)
+        };
+
+        Swal.fire({
+            title: 'Creating Course...',
+            html: 'Please wait',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await fetch('/api/add_course', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(courseData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Course Created!',
+                    text: data.message,
+                    timer: 2000
+                });
+
+                // Reset form
+                document.getElementById('addCourseForm').reset();
+
+                // Reload courses
+                await loadCourses();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to create course'
+            });
+        }
+    });
+
+    async function deleteCourse(courseCode, courseName) {
+        const result = await Swal.fire({
+            title: 'Delete Course?',
+            html: `
+            <p>Are you sure you want to delete:</p>
+            <p><strong>${courseName}</strong> (${courseCode})?</p>
+            <p class="text-danger small">This action cannot be undone!</p>
+        `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#dc3545'
+        });
+
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Deleting...',
+                html: 'Please wait',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            try {
+                const response = await fetch(`/api/delete_course/${courseCode}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: data.message,
+                        timer: 2000
+                    });
+
+                    await loadCourses();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to delete course'
+                });
+            }
+        }
+    }
+
+    // ==================== SHARED FUNCTIONS ====================
+
+    async function loadSessionCount() {
+        try {
+            const response = await fetch('/api/get_session_count');
+            const data = await response.json();
+            document.getElementById('totalSessions').textContent = data.total || 0;
+        } catch (error) {
+            console.error('Error loading session count:', error);
+        }
+    }
+
+    function formatDate(timestamp) {
+        if (!timestamp || !timestamp._seconds) return 'N/A';
+        const date = new Date(timestamp._seconds * 1000);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    }
+
+    function showError(message) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: message
+        });
+    }
+</script>
+{% endblock %}

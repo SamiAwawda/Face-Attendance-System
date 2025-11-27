@@ -1,0 +1,203 @@
+{% extends "layout.html" %}
+
+{% block title %}Doctor Login - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row min-vh-100 align-items-center justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="cyber-card">
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <i class="fas fa-chalkboard-teacher"
+                            style="font-size: 4rem; background: linear-gradient(45deg, #00ffff, #0099ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                    </div>
+                    <h1 class="neon-text mb-2">
+                        Doctor Portal
+                    </h1>
+                    <p class="text-muted">Select your course and login</p>
+                </div>
+
+                <form id="doctorLoginForm">
+                    <div class="mb-3">
+                        <label for="courseSelect" class="form-label">
+                            <i class="fas fa-graduation-cap"></i> Select Course
+                        </label>
+                        <select class="form-select" id="courseSelect" required>
+                            <option value="">Loading courses...</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="coursePassword" class="form-label">
+                            <i class="fas fa-key"></i> Course Password
+                        </label>
+                        <input type="password" class="form-control" id="coursePassword" name="password"
+                            placeholder="Enter course password" required autocomplete="current-password">
+                    </div>
+
+                    <button type="submit" class="btn btn-cyber w-100 mb-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>
+                        Login to Course
+                    </button>
+
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Back to Gateway
+                    </a>
+                </form>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Each course has a unique password set by admin
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-outline-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 12px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: #fff;
+    }
+
+    .form-select {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(0, 255, 255, 0.3);
+        color: #fff;
+        border-radius: 8px;
+        padding: 12px;
+        transition: all 0.3s ease;
+    }
+
+    .form-select:focus {
+        background: rgba(0, 0, 0, 0.7);
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        color: #fff;
+    }
+
+    .form-select option {
+        background: #1a1a2e;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load courses on page load
+    window.addEventListener('load', async () => {
+        await loadCourses();
+    });
+
+    async function loadCourses() {
+        try {
+            const response = await fetch('/api/get_courses_list');
+            const data = await response.json();
+
+            const select = document.getElementById('courseSelect');
+
+            if (data.courses && data.courses.length > 0) {
+                select.innerHTML = '<option value="">-- Select a Course --</option>';
+
+                data.courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.course_code;
+                    option.textContent = `${course.course_name} (${course.course_code}) - ${course.doctor_name}`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">No courses available</option>';
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Courses Found',
+                    text: 'Please contact admin to create courses first'
+                });
+            }
+        } catch (error) {
+            console.error('Error loading courses:', error);
+            document.getElementById('courseSelect').innerHTML = '<option value="">Error loading courses</option>';
+        }
+    }
+
+    document.getElementById('doctorLoginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const courseCode = document.getElementById('courseSelect').value;
+        const password = document.getElementById('coursePassword').value;
+
+        if (!courseCode) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Course Required',
+                text: 'Please select a course'
+            });
+            return;
+        }
+
+        // Show loading
+        Swal.fire({
+            title: 'Authenticating...',
+            html: 'Verifying course password',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await fetch('/doctor_auth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ course_code: courseCode, password })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Login Successful!',
+                    text: 'Loading course dashboard...',
+                    timer: 1000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = data.redirect;
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Login Failed',
+                    text: data.message || 'Invalid password'
+                });
+                document.getElementById('coursePassword').value = '';
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Authentication failed. Please try again.'
+            });
+        }
+    });
+
+    // Focus on course select
+    document.getElementById('courseSelect').focus();
+</script>
+{% endblock %}
