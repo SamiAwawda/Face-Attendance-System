@@ -380,7 +380,8 @@ class CameraEngine:
                 'course_name': session_info.get('course_name', ''),
                 'course_code': session_info.get('course_code', ''),
                 'timestamp': firestore.SERVER_TIMESTAMP,
-                'marked_at': time.strftime('%Y-%m-%d %H:%M:%S')
+                'marked_at': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'lecture_date': time.strftime('%Y-%m-%d')  # Current date as string for standardized querying
             }
             
             # Add to attendance collection

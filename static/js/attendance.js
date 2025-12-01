@@ -322,3 +322,66 @@ function playNotificationSound() {
         console.error('Failed to play notification sound:', error);
     }
 }
+
+/**
+ * End session early (manual termination by professor)
+ */
+async function endSessionEarly() {
+    const result = await Swal.fire({
+        title: 'End Attendance Session?',
+        html: `
+            <p>Are you sure you want to end attendance early?</p>
+            <p class="text-muted">This will finalize attendance for the current lecture.</p>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, End Session',
+        cancelButtonText: 'Continue Session'
+    });
+
+    if (result.isConfirmed) {
+        // Stop timers and polling
+        sessionEnded = true;
+        stopCountdownTimer();
+        stopPolling();
+
+        // Show loading indicator
+        Swal.fire({
+            title: 'Finalizing Attendance...',
+            html: 'Saving session data and updating statistics.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            // Send POST request to finalize session
+            const response = await fetch('/end_session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                // Redirect to course stats (Flask redirect will handle this)
+                window.location.href = '/course_stats';
+            } else {
+                throw new Error('Failed to end session');
+            }
+        } catch (error) {
+            console.error('Error ending session:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to end session properly. Redirecting anyway...',
+                timer: 2000
+            }).then(() => {
+                window.location.href = '/end_session';
+            });
+        }
+    }
+}

@@ -147,6 +147,10 @@
                                     <input type="date" class="form-control" id="startDate" required>
                                 </div>
                                 <div class="col-md-4">
+                                    <label for="lectureTime" class="form-label">Lecture Time</label>
+                                    <input type="time" class="form-control" id="lectureTime" required>
+                                </div>
+                                <div class="col-md-4">
                                     <label for="totalLectures" class="form-label">Total Lectures</label>
                                     <input type="number" class="form-control" id="totalLectures" min="1" required>
                                 </div>
@@ -514,6 +518,7 @@
             doctor_name: document.getElementById('doctorName').value.trim(),
             password: document.getElementById('coursePassword').value.trim(),
             start_date: document.getElementById('startDate').value,
+            lecture_time: document.getElementById('lectureTime').value,
             total_lectures: parseInt(document.getElementById('totalLectures').value),
             class_capacity: parseInt(document.getElementById('classCapacity').value)
         };

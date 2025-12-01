@@ -83,32 +83,6 @@
         </div>
     </div>
 
-    <!-- Statistics Cards Row 2: Attendance Stats -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="stat-card-large">
-                <div class="stat-icon-large" style="background: linear-gradient(45deg, #00ff00, #00aa00);">
-                    <i class="fas fa-user-check"></i>
-                </div>
-                <div class="stat-content-large">
-                    <div class="stat-label">Total Present (All Weeks)</div>
-                    <h2 class="stat-value" style="color: #00ff00;">{{ total_present }}</h2>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="stat-card-large">
-                <div class="stat-icon-large" style="background: linear-gradient(45deg, #ff0000, #cc0000);">
-                    <i class="fas fa-user-times"></i>
-                </div>
-                <div class="stat-content-large">
-                    <div class="stat-label">Total Absent (All Weeks)</div>
-                    <h2 class="stat-value" style="color: #ff0000;">{{ total_absent }}</h2>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Course Progress -->
     <div class="row mb-4">
@@ -125,56 +99,119 @@
                             <span class="progress-text">{{ "%.1f"|format(progress_display) }}%</span>
                     </div>
                 </div>
-                <p class="text-muted mt-2 mb-0 text-center">
-                    Week {{ current_week }} of {{ total_lectures }}
-                    {% if current_week >= total_lectures %}
-                    (Course Complete!)
-                    {% endif %}
-                </p>
             </div>
         </div>
+        <p class="text-muted mt-2 mb-0 text-center">
+            Week {{ current_week }} of {{ total_lectures }}
+            {% if current_week >= total_lectures %}
+            (Course Complete!)
+            {% endif %}
+        </p>
     </div>
 </div>
+</div>
 
-<!-- Previous Weeks History -->
-{% if weekly_history %}
+<!-- Semester Schedule (Detailed Lecture Timeline) -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="cyber-card">
             <h4 style="color: var(--neon-cyan); margin-bottom: 20px;">
-                <i class="fas fa-history"></i> Previous Weeks History
+                <i class="fas fa-calendar-alt"></i> Semester Schedule (1 Lecture = 1 Week)
             </h4>
-            <table class="table table-dark table-hover">
-                <thead>
-                    <tr>
-                        <th><i class="fas fa-calendar-week"></i> Week</th>
-                        <th><i class="fas fa-user-check"></i> Present</th>
-                        <th><i class="fas fa-user-times"></i> Absent</th>
-                        <th><i class="fas fa-percentage"></i> Attendance Rate</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for week in weekly_history %}
-                    <tr>
-                        <td><strong>Week {{ week.week }}</strong></td>
-                        <td><span class="badge bg-success">{{ week.present }}</span></td>
-                        <td><span class="badge bg-danger">{{ week.absent }}</span></td>
-                        <td>
-                            {% set attendance_rate = (week.present / class_capacity * 100) if class_capacity > 0 else 0
-                            %}
-                            <div class="mini-progress">
-                                <div class="mini-progress-fill" style="width: {{ attendance_rate }}%"></div>
-                            </div>
-                            <small class="text-muted">{{ "%.1f"|format(attendance_rate) }}%</small>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag"></i> Week #</th>
+                            <th><i class="fas fa-calendar-day"></i> Date</th>
+                            <th><i class="fas fa-info-circle"></i> Status</th>
+                            <th><i class="fas fa-user-check"></i> Present</th>
+                            <th><i class="fas fa-user-times"></i> Absent</th>
+                            <th><i class="fas fa-percentage"></i> Attendance Rate</th>
+                            <th><i class="fas fa-eye"></i> Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lecture in lecture_timeline %}
+                        <tr
+                            class="{% if lecture.status == 'Completed' %}lecture-completed{% else %}lecture-upcoming{% endif %}">
+                            <td><strong>Week {{ lecture.week_num }}</strong></td>
+                            <td>
+                                {% if lecture.date %}
+                                {{ lecture.date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if lecture.status == 'Completed' %}
+                                <span class="badge badge-completed">
+                                    <i class="fas fa-check-circle"></i> Completed
+                                </span>
+                                {% elif lecture.status == 'In Progress' %}
+                                <span class="badge badge-in-progress">
+                                    <i class="fas fa-spinner fa-pulse"></i> In Progress
+                                </span>
+                                {% elif lecture.status == 'Ready to Start' %}
+                                <span class="badge badge-ready">
+                                    <i class="fas fa-play-circle"></i> Ready to Start
+                                </span>
+                                {% elif lecture.status == 'Upcoming' %}
+                                <span class="badge badge-upcoming">
+                                    <i class="fas fa-clock"></i> Upcoming
+                                </span>
+                                {% else %}
+                                <span class="badge badge-unknown">Unknown</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if lecture.present == '-' %}
+                                <span class="text-muted">—</span>
+                                {% else %}
+                                <span class="count-present">{{ lecture.present }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if lecture.absent == '-' %}
+                                <span class="text-muted">—</span>
+                                {% else %}
+                                <span class="count-absent">{{ lecture.absent }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if lecture.attendance_rate is not none %}
+                                <div class="mini-progress">
+                                    <div class="mini-progress-fill" style="width: {{ lecture.attendance_rate }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ lecture.attendance_rate }}%</small>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if lecture.status in ['Completed', 'In Progress'] and lecture.present != '-' %}
+                                <button class="btn btn-view-details" data-course-code="{{ course_code }}"
+                                    data-course-name="{{ course_name }}"
+                                    data-lecture-date="{{ lecture.date.strftime('%Y-%m-%d') if lecture.date else '' }}"
+                                    data-week-num="{{ lecture.week_num }}">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                <a href="{{ url_for('export_attendance', course_code=course_code, date_str=lecture.date.strftime('%Y-%m-%d') if lecture.date else '') }}"
+                                    class="btn btn-export-excel" title="Download Excel">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </a>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
-{% endif %}
 
 <!-- Action Section -->
 <div class="row">
@@ -184,12 +221,69 @@
                 <h3 style="color: var(--neon-cyan); margin-bottom: 15px;">
                     <i class="fas fa-camera"></i> Ready to Start Attendance?
                 </h3>
-                <p class="text-muted mb-4">
-                    Click the button below to open the camera and begin real-time face recognition
+                <p class="text-muted mb-3">
+                    Set the session duration and click start to begin real-time face recognition
                 </p>
+
+                <!-- Duration Input Form -->
+                <div class="duration-form-container mb-4">
+                    <label for="sessionDuration" class="form-label" style="color: var(--neon-cyan); font-weight: 600;">
+                        <i class="fas fa-clock"></i> Session Duration (Minutes)
+                    </label>
+                    <input type="number" id="sessionDuration" class="form-control duration-input" value="60" min="1"
+                        max="300" placeholder="60">
+                    <small class="text-muted">Default: 60 minutes (1-300 minutes allowed)</small>
+                </div>
+
                 <button onclick="startAttendance()" class="btn-start-session">
                     <i class="fas fa-play-circle me-2"></i>
                     Start New Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lecture Details Modal -->
+<div class="modal fade" id="lectureDetailsModal" tabindex="-1" aria-labelledby="lectureDetailsModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content"
+            style="background: rgba(26, 26, 46, 0.95); border: 2px solid rgba(0, 255, 255, 0.5);">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(0, 255, 255, 0.3);">
+                <h5 class="modal-title" id="lectureDetailsModalLabel" style="color: var(--neon-cyan);">
+                    <i class="fas fa-users"></i> Attendance Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalLoadingSpinner" class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin fa-3x" style="color: var(--neon-cyan);"></i>
+                    <p class="mt-3 text-muted">Loading attendance data...</p>
+                </div>
+                <div id="modalContent" style="display: none;">
+                    <h6 style="color: var(--neon-cyan);" id="modalLectureInfo"></h6>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th><i class="fas fa-user"></i> Name</th>
+                                    <th><i class="fas fa-id-badge"></i> Student ID</th>
+                                    <th><i class="fas fa-clock"></i> Time Marked</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalStudentTableBody">
+                                <!-- Student rows will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(0, 255, 255, 0.3);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
                 </button>
             </div>
         </div>
@@ -363,13 +457,119 @@
         transition: all 0.3s ease;
     }
 
+    .table tbody tr.lecture-completed {
+        background: rgba(0, 255, 0, 0.03);
+    }
+
+    .table tbody tr.lecture-upcoming {
+        background: rgba(255, 255, 0, 0.03);
+    }
+
     .table tbody tr:hover {
-        background: rgba(0, 255, 255, 0.05);
+        background: rgba(0, 255, 255, 0.1) !important;
+        transform: scale(1.01);
     }
 
     .badge {
-        font-size: 1rem;
-        padding: 8px 16px;
+        font-size: 0.9rem;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    .badge-completed {
+        background: linear-gradient(45deg, #00ff00, #00aa00);
+        color: #000;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+    }
+
+    .badge-in-progress {
+        background: linear-gradient(45deg, #00ffff, #0099ff);
+        color: #000;
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    }
+
+    .badge-ready {
+        background: linear-gradient(45deg, #0099ff, #6600ff);
+        color: #fff;
+        box-shadow: 0 0 15px rgba(102, 0, 255, 0.5);
+        animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+
+        0%,
+        100% {
+            box-shadow: 0 0 15px rgba(102, 0, 255, 0.5);
+        }
+
+        50% {
+            box-shadow: 0 0 25px rgba(102, 0, 255, 0.8);
+        }
+    }
+
+    .badge-upcoming {
+        background: linear-gradient(45deg, #ffd700, #ffaa00);
+        color: #000;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+
+    .badge-unknown {
+        background: rgba(100, 100, 100, 0.5);
+        color: #fff;
+    }
+
+    .btn-view-details {
+        background: linear-gradient(45deg, #00ffff, #0099ff);
+        border: none;
+        color: #000;
+        padding: 6px 12px;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .btn-view-details:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+
+    .btn-export-excel {
+        background: linear-gradient(45deg, #00ff00, #00aa00);
+        border: none;
+        color: #000;
+        padding: 6px 12px;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        margin-left: 5px;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-export-excel:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        color: #000;
+        text-decoration: none;
+    }
+
+    .count-present {
+        color: #00ff00;
+        font-weight: 700;
+        font-size: 1.1rem;
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+
+    .count-absent {
+        color: #ff0000;
+        font-weight: 700;
+        font-size: 1.1rem;
+        text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
     }
 
     .mini-progress {
@@ -437,15 +637,138 @@
     .btn-start-session:active {
         transform: scale(1.05);
     }
+
+    .duration-form-container {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .duration-input {
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(0, 255, 255, 0.3);
+        color: var(--neon-cyan);
+        text-align: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        padding: 15px;
+        border-radius: 10px;
+        font-family: 'Orbitron', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .duration-input:focus {
+        background: rgba(0, 0, 0, 0.7);
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        outline: none;
+        color: var(--neon-cyan);
+    }
+
+    .duration-input::placeholder {
+        color: rgba(0, 255, 255, 0.3);
+    }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // Handle view details buttons
+    document.addEventListener('DOMContentLoaded', function () {
+        const viewButtons = document.querySelectorAll('.btn-view-details');
+        viewButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const courseCode = this.getAttribute('data-course-code');
+                const courseName = this.getAttribute('data-course-name');
+                const lectureDate = this.getAttribute('data-lecture-date');
+                const weekNum = this.getAttribute('data-week-num');
+                openLectureDetails(courseCode, lectureDate, weekNum, courseName);
+            });
+        });
+    });
+
+    async function openLectureDetails(courseCode, lectureDate, weekNum, courseName) {
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('lectureDetailsModal'));
+        modal.show();
+
+        // Show loading spinner
+        document.getElementById('modalLoadingSpinner').style.display = 'block';
+        document.getElementById('modalContent').style.display = 'none';
+
+        try {
+            // Fetch attendance data
+            const response = await fetch(`/api/get_lecture_details/${courseCode}/${lectureDate}`);
+            const data = await response.json();
+
+            if (data.success) {
+                // Update modal title
+                document.getElementById('modalLectureInfo').textContent =
+                    `${courseName} - Week ${weekNum} - ${lectureDate}`;
+
+                // Populate table
+                const tbody = document.getElementById('modalStudentTableBody');
+                if (data.students.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                <i class="fas fa-user-slash fa-2x mb-2" style="opacity: 0.3;"></i>
+                                <p>No students attended this lecture</p>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = data.students.map((student, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td><strong>${student.name}</strong></td>
+                            <td><code>${student.student_id}</code></td>
+                            <td><small class="text-muted">${student.marked_at}</small></td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Hide loading, show content
+                document.getElementById('modalLoadingSpinner').style.display = 'none';
+                document.getElementById('modalContent').style.display = 'block';
+            } else {
+                throw new Error(data.message || 'Failed to load data');
+            }
+        } catch (error) {
+            console.error('Error fetching lecture details:', error);
+            const tbody = document.getElementById('modalStudentTableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-danger py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>Failed to load attendance data</p>
+                        <small>${error.message}</small>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('modalLoadingSpinner').style.display = 'none';
+            document.getElementById('modalContent').style.display = 'block';
+        }
+    }
+
     async function startAttendance() {
+        // Get duration from input field
+        const durationInput = document.getElementById('sessionDuration');
+        let duration = parseInt(durationInput.value);
+
+        // Validate duration
+        if (isNaN(duration) || duration < 1 || duration > 300) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Invalid Duration',
+                text: 'Please enter a duration between 1 and 300 minutes.',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+
         Swal.fire({
             title: 'Starting Attendance Session',
-            html: 'Initializing camera system...',
+            html: `Initializing camera system...<br><small>Duration: ${duration} minutes</small>`,
             allowOutsideClick: false,
             didOpen: () => {
                 Swal.showLoading();
@@ -457,7 +780,10 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    duration: duration
+                })
             });
 
             const data = await response.json();

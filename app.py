@@ -3,12 +3,14 @@ Flask Application for Face Attendance System - 4-Phase Workflow
 Phase 1: Gateway, Phase 2: Admin Portal, Phase 3: Professor Portal, Phase 4: Smart Attendance
 """
 
-from flask import Flask, render_template, Response, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, Response, request, jsonify, session, redirect, url_for, send_file
 from camera_engine import CameraEngine
 import os
 from functools import wraps
 import time
 from datetime import datetime
+import pandas as pd
+from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session management
@@ -183,10 +185,11 @@ def add_course():
     doctor_name = data.get('doctor_name', '').strip()
     password = data.get('password', '').strip()
     start_date = data.get('start_date', '').strip()
+    lecture_time = data.get('lecture_time', '').strip()
     total_lectures = data.get('total_lectures', '')
     class_capacity = data.get('class_capacity', '')
     
-    if not all([course_name, course_code, doctor_name, password, start_date, total_lectures, class_capacity]):
+    if not all([course_name, course_code, doctor_name, password, start_date, lecture_time, total_lectures, class_capacity]):
         return jsonify({'success': False, 'message': 'All fields are required'}), 400
     
     try:
@@ -207,6 +210,7 @@ def add_course():
             'doctor_name': doctor_name,
             'password': password,
             'start_date': start_date_obj,
+            'lecture_time': lecture_time,
             'total_lectures': total_lectures,
             'class_capacity': class_capacity,
             'created_at': datetime.now()
@@ -364,77 +368,113 @@ def doctor_auth():
 @app.route('/course_stats')
 @require_session
 def course_stats():
-    """Course analytics dashboard before starting attendance"""
+    """Course analytics dashboard with detailed lecture timeline (1 Lecture = 1 Week)"""
+    from datetime import timedelta
+    
     course_code = session.get('course_code')
     class_capacity = session.get('class_capacity', 0)
+    total_lectures = session.get('total_lectures', 0)
     
-    # Calculate current week
+    # Parse start_date
     start_date = session.get('start_date')
-    current_week = 1
     start_dt = None
     if start_date:
         try:
             if hasattr(start_date, 'seconds'):
-                # Firestore timestamp
-                start_dt = datetime.fromtimestamp(start_date.seconds)
+                # Firestore timestamp - convert to naive datetime
+                start_dt = datetime.fromtimestamp(start_date.seconds).replace(tzinfo=None)
             else:
                 start_dt = start_date
-            
-            days_diff = (datetime.now() - start_dt).days
-            current_week = max(1, (days_diff // 7) + 1)
+                # Ensure it's naive if it has timezone info
+                if hasattr(start_dt, 'tzinfo') and start_dt.tzinfo is not None:
+                    start_dt = start_dt.replace(tzinfo=None)
         except Exception as e:
-            print(f"[Error] Week calculation failed: {e}")
+            print(f"[Error] Failed to parse start_date: {e}")
     
-    # Fetch and analyze attendance history
+    # Calculate current week
+    current_week = 1
+    if start_dt:
+        days_diff = (datetime.now() - start_dt).days
+        current_week = max(1, (days_diff // 7) + 1)
+    
+    # Fetch attendance records from Firebase (query by lecture_date for each week)
     engine = init_camera()
-    total_attendance = 0
-    weekly_history = []
     
-    if engine and start_dt:
-        try:
-            attendance_ref = engine.db.collection('attendance')
-            docs = attendance_ref.where('course_code', '==', course_code).stream()
+    # Generate Lecture Timeline (1 Lecture = 1 Week)
+    lecture_timeline = []
+    total_present = 0
+    total_absent = 0
+    today = datetime.now().date()
+    
+    for i in range(total_lectures):
+        # Calculate the lecture date (week i starts on start_date + i weeks)
+        lecture_date = start_dt + timedelta(weeks=i) if start_dt else None
+        
+        # Determine if this lecture has occurred yet
+        if lecture_date:
+            lecture_date_only = lecture_date.date()
+            lecture_date_str = lecture_date_only.strftime('%Y-%m-%d')
             
-            # Group by week
-            weeks_data = {}
-            for doc in docs:
-                data = doc.to_dict()
-                marked_at = data.get('timestamp')
-                
-                if marked_at and hasattr(marked_at, 'seconds'):
-                    marked_dt = datetime.fromtimestamp(marked_at.seconds)
-                    days_since_start = (marked_dt - start_dt).days
-                    week_num = (days_since_start // 7) + 1
-                    
-                    if week_num not in weeks_data:
-                        weeks_data[week_num] = set()
-                    
-                    # Track unique students per week
-                    student_id = data.get('student_id')
-                    if student_id:
-                        weeks_data[week_num].add(student_id)
+            # Query attendance for this specific lecture date
+            week_present = 0
+            week_absent = 0
             
-            # Build weekly history list
-            for week_num in sorted(weeks_data.keys()):
-                present_count = len(weeks_data[week_num])
-                absent_count = max(0, class_capacity - present_count)
-                weekly_history.append({
-                    'week': week_num,
-                    'present': present_count,
-                    'absent': absent_count
-                })
-                total_attendance += present_count
+            if engine:
+                try:
+                    attendance_ref = engine.db.collection('attendance')
+                    # Query by course_code AND lecture_date
+                    query = attendance_ref.where('course_code', '==', course_code).where('lecture_date', '==', lecture_date_str)
+                    docs = list(query.stream())
+                    week_present = len(docs)
+                    week_absent = class_capacity - week_present
+                except Exception as e:
+                    print(f"[Error] Failed to query attendance for {lecture_date_str}: {e}")
             
-        except Exception as e:
-            print(f"[Error] Failed to fetch attendance history: {e}")
+            # Smart status logic
+            if lecture_date_only < today:
+                # Past lecture - always completed
+                status = "Completed"
+            elif lecture_date_only == today:
+                # Today's lecture - check if attendance has been taken
+                if week_present > 0:
+                    status = "In Progress"
+                else:
+                    status = "Ready to Start"
+            else:
+                # Future lecture
+                status = "Upcoming"
+                week_present = '-'
+                week_absent = '-'
+        else:
+            lecture_date_only = None
+            week_present = '-'
+            week_absent = '-'
+            status = "Unknown"
+        
+        
+        # Calculate attendance rate for completed/in-progress lectures
+        if status in ['Completed', 'In Progress'] and week_present != '-':
+            attendance_rate = round((week_present / class_capacity * 100), 1) if class_capacity > 0 else 0
+        else:
+            attendance_rate = None
+        
+        # Add to timeline
+        lecture_timeline.append({
+            'week_num': i + 1,  # Display as Week 1, Week 2, etc.
+            'date': lecture_date_only,
+            'status': status,
+            'present': week_present,
+            'absent': week_absent,
+            'attendance_rate': attendance_rate
+        })
+        
+        # Aggregate totals (only count completed lectures with actual numbers)
+        if status == "Completed" and week_present != '-':
+            total_present += week_present
+            total_absent += week_absent
     
     # Calculate remaining lectures
-    total_lectures = session.get('total_lectures', 0)
     remaining_lectures = max(0, total_lectures - current_week)
-    
-    # Calculate overall stats
-    total_present = sum(w['present'] for w in weekly_history)
-    total_absent = (class_capacity * len(weekly_history)) - total_present if weekly_history else 0
     
     return render_template('course_stats.html',
                          course_code=session.get('course_code'),
@@ -446,7 +486,7 @@ def course_stats():
                          class_capacity=class_capacity,
                          total_present=total_present,
                          total_absent=total_absent,
-                         weekly_history=weekly_history)
+                         lecture_timeline=lecture_timeline)
 
 
 # ==================== PHASE 4: SMART ATTENDANCE ====================
@@ -454,10 +494,22 @@ def course_stats():
 @app.route('/start_attendance_session', methods=['POST'])
 @require_session
 def start_attendance_session():
-    """Start attendance session from course stats"""
-    # Set session start time and default duration
+    """Start attendance session from course stats with custom duration"""
+    # Get custom duration from request (in minutes)
+    data = request.json or {}
+    custom_duration = data.get('duration', 90)  # Default 90 minutes
+    
+    # Validate duration (must be positive integer between 1 and 300 minutes)
+    try:
+        custom_duration = int(custom_duration)
+        if custom_duration < 1 or custom_duration > 300:
+            custom_duration = 90
+    except (ValueError, TypeError):
+        custom_duration = 90
+    
+    # Set session start time and custom duration
     session['session_start'] = time.time()
-    session['lecture_duration'] = 90  # Default 90 minutes
+    session['lecture_duration'] = custom_duration
     
     return jsonify({'success': True, 'redirect': url_for('attendance')})
 
@@ -619,10 +671,176 @@ def session_stats():
     })
 
 
-@app.route('/end_session')
-def end_session():
-    """End the current session"""
+@app.route('/api/get_lecture_details/<course_code>/<date_str>')
+def get_lecture_details(course_code, date_str):
+    """Get list of students who attended a specific lecture"""
     engine = init_camera()
+    if engine is None:
+        return jsonify({'success': False, 'message': 'System not initialized'}), 500
+    
+    try:
+        # Query attendance records for this course and specific date
+        attendance_ref = engine.db.collection('attendance')
+        # Use lecture_date field for direct querying
+        query = attendance_ref.where('course_code', '==', course_code).where('lecture_date', '==', date_str)
+        docs = query.stream()
+        
+        # Collect students
+        students = []
+        for doc in docs:
+            data = doc.to_dict()
+            # Extract time from marked_at field
+            marked_at_str = data.get('marked_at', '')
+            try:
+                # Parse full timestamp and extract time
+                marked_time = marked_at_str.split(' ')[1] if ' ' in marked_at_str else marked_at_str
+            except:
+                marked_time = 'N/A'
+            
+            students.append({
+                'student_id': data.get('student_id', 'Unknown'),
+                'name': data.get('name', 'Unknown'),
+                'marked_at': marked_time
+            })
+        
+        # Sort by time marked
+        students.sort(key=lambda x: x['marked_at'])
+        
+        return jsonify({
+            'success': True,
+            'students': students,
+            'total': len(students)
+        })
+        
+        return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    except Exception as e:
+        print(f"[Error] Failed to fetch lecture details: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/export_attendance/<course_code>/<date_str>')
+def export_attendance(course_code, date_str):
+    """Export attendance list for a specific lecture to Excel"""
+    engine = init_camera()
+    if engine is None:
+        return jsonify({'success': False, 'message': 'System not initialized'}), 500
+    
+    try:
+        # Query attendance records for this course and specific date
+        attendance_ref = engine.db.collection('attendance')
+        query = attendance_ref.where('course_code', '==', course_code).where('lecture_date', '==', date_str)
+        docs = query.stream()
+        
+        # Collect attendance data
+        attendance_data = []
+        for doc in docs:
+            data = doc.to_dict()
+            # Extract time from marked_at field
+            marked_at_str = data.get('marked_at', '')
+            try:
+                marked_time = marked_at_str.split(' ')[1] if ' ' in marked_at_str else marked_at_str
+            except:
+                marked_time = 'N/A'
+            
+            attendance_data.append({
+                'Student Name': data.get('name', 'Unknown'),
+                'Student ID': data.get('student_id', 'Unknown'),
+                'Time Marked': marked_time
+            })
+        
+        # Sort by time marked
+        attendance_data.sort(key=lambda x: x['Time Marked'])
+        
+        # Create pandas DataFrame
+        df = pd.DataFrame(attendance_data)
+        
+        # Create Excel file in memory
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Attendance')
+            
+            # Auto-adjust column widths
+            worksheet = writer.sheets['Attendance']
+            for idx, col in enumerate(df.columns):
+                max_length = max(
+                    df[col].astype(str).apply(len).max(),
+                    len(col)
+                ) + 2
+                worksheet.column_dimensions[chr(65 + idx)].width = max_length
+        
+        output.seek(0)
+        
+        # Generate filename
+        filename = f'Attendance_{course_code}_{date_str}.xlsx'
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        print(f"[Error] Failed to export attendance: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+
+@app.route('/end_session', methods=['GET', 'POST'])
+def end_session():
+    """End the current session with proper attendance finalization"""
+    from datetime import timedelta
+    
+    engine = init_camera()
+    
+    # For POST requests (explicit end session), finalize attendance
+    if request.method == 'POST':
+        course_code = session.get('course_code')
+        
+        if engine and course_code:
+            # Get session info for marking attendance
+            session_info = {
+                'doctor_name': session.get('doctor_name'),
+                'course_name': session.get('course_name'),
+                'course_code': course_code
+            }
+            
+            # Mark any remaining recognized students who haven't been marked yet
+            final_marked = []
+            for student_id in engine.recognized_students.keys():
+                if student_id not in engine.attendance_marked:
+                    if engine.mark_attendance(student_id, session_info):
+                        final_marked.append({
+                            'student_id': student_id,
+                            'name': engine.recognized_students[student_id]['name']
+                        })
+            
+            # Identify current lecture based on today's date
+            start_date = session.get('start_date')
+            if start_date:
+                try:
+                    # Parse start_date
+                    if hasattr(start_date, 'seconds'):
+                        start_dt = datetime.fromtimestamp(start_date.seconds).replace(tzinfo=None)
+                    else:
+                        start_dt = start_date
+                        if hasattr(start_dt, 'tzinfo') and start_dt.tzinfo is not None:
+                            start_dt = start_dt.replace(tzinfo=None)
+                    
+                    # Calculate current lecture week
+                    today = datetime.now()
+                    days_since_start = (today - start_dt).days
+                    current_lecture_week = (days_since_start // 7) + 1
+                    
+                    # Log session summary
+                    print(f"[Session End] Course: {course_code}, Week: {current_lecture_week}")
+                    print(f"[Session End] Total Marked: {len(engine.attendance_marked)}")
+                    print(f"[Session End] Final Marked: {len(final_marked)}")
+                    
+                except Exception as e:
+                    print(f"[Error] Failed to identify current lecture: {e}")
+    
+    # Stop camera and reset session
     if engine:
         engine.stop_camera()
         engine.reset_session()
@@ -631,18 +849,11 @@ def end_session():
     is_admin = session.get('is_admin', False)
     has_course = 'course_code' in session
     
-    # For course users, preserve course session to show stats
-    course_code = session.get('course_code')
-    course_name = session.get('course_name')
-    doctor_name = session.get('doctor_name')
-    start_date = session.get('start_date')
-    total_lectures = session.get('total_lectures')
-    class_capacity = session.get('class_capacity')
-    
-    # Clear only session-specific data
+    # Clear only session-specific data (preserve course session)
     session.pop('session_start', None)
     session.pop('lecture_duration', None)
     
+    # Redirect appropriately
     if is_admin:
         return redirect(url_for('admin_dashboard'))
     elif has_course:
@@ -650,6 +861,7 @@ def end_session():
         return redirect(url_for('course_stats'))
     
     return redirect(url_for('index'))
+
 
 
 if __name__ == '__main__':
